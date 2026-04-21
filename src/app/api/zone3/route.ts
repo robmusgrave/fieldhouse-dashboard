@@ -88,11 +88,13 @@ export async function GET() {
 
   // Aging + Expiring Soon should only count QUOTE_ACTIVE (approved quotes
   // are by definition no longer "aging" as open quotes).
-  const stillOpen = activeQuotes.filter((q) => q.statusCategory === "QUOTE_ACTIVE");
+  const stillOpen = activeQuotes.filter(
+    (q: (typeof activeQuotes)[number]) => q.statusCategory === "QUOTE_ACTIVE"
+  );
 
   // 2. AGING — QUOTE_ACTIVE only, bucketed by days since createdAt
   const agingBuckets = bucketise(
-    stillOpen.map((q) => ({
+    stillOpen.map((q: (typeof stillOpen)[number]) => ({
       value: q.total ?? 0,
       ageDays: Math.floor((+today - +startOfDay(q.createdAt)) / 86400000),
     }))
@@ -100,27 +102,30 @@ export async function GET() {
 
   // 3. EXPIRING SOON — QUOTE_ACTIVE, createdAt 23-30 days ago
   const expiringSoon = stillOpen
-    .map((q) => {
+    .map((q: (typeof stillOpen)[number]) => {
       const age = Math.floor((+today - +startOfDay(q.createdAt)) / 86400000);
       return { q, age };
     })
-    .filter(({ age }) => age >= 23 && age <= 30)
-    .sort((a, b) => b.age - a.age) // oldest (= soonest to expire) first
+    .filter(({ age }: { age: number }) => age >= 23 && age <= 30)
+    .sort((a: { age: number }, b: { age: number }) => b.age - a.age) // oldest (= soonest to expire) first
     .slice(0, 10);
 
   // Fetch customer display names for those quotes
   const custIds = expiringSoon
-    .map((x) => x.q.customerId)
-    .filter((id): id is string => !!id);
+    .map((x: (typeof expiringSoon)[number]) => x.q.customerId)
+    .filter((id: string | null): id is string => !!id);
   const custs = custIds.length
     ? await prisma.customer.findMany({
         where: { id: { in: custIds } },
         select: { id: true, companyName: true, primaryContactFullName: true },
       })
     : [];
-  const custMap = new Map(custs.map((c) => [c.id, c]));
+  const custMap = new Map(
+    custs.map((c: (typeof custs)[number]) => [c.id, c] as const)
+  );
 
-  const expiringSoonOut = expiringSoon.map(({ q, age }) => {
+  const expiringSoonOut = expiringSoon.map(
+    ({ q, age }: (typeof expiringSoon)[number]) => {
     const c = q.customerId ? custMap.get(q.customerId) : undefined;
     return {
       quote: q.visualId ?? q.id.slice(0, 8),
@@ -128,7 +133,8 @@ export async function GET() {
       value: q.total ?? 0,
       daysLeft: Math.max(0, 30 - age),
     };
-  });
+    }
+  );
 
   // 4. WIN RATE TREND — 26 weekly points, each = rolling 90-day window ending that week
   const winRateTrend = await winRate26Weeks(now);
@@ -213,10 +219,12 @@ async function winRate26Weeks(now: Date) {
     windowStart.setDate(windowStart.getDate() - 90);
 
     const won = wins.filter(
-      (r) => r.createdAt >= windowStart && r.createdAt <= windowEnd
+      (r: (typeof wins)[number]) =>
+        r.createdAt >= windowStart && r.createdAt <= windowEnd
     ).length;
     const lost = losses.filter(
-      (r) => r.createdAt >= windowStart && r.createdAt <= windowEnd
+      (r: (typeof losses)[number]) =>
+        r.createdAt >= windowStart && r.createdAt <= windowEnd
     ).length;
 
     const denom = won + lost;
