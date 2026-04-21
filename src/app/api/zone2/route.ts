@@ -60,7 +60,9 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
   const customers = await prisma.customer.findMany({
     where: { id: { in: ids } },
   });
-  const byId = new Map(customers.map((c) => [c.id, c]));
+  const byId = new Map(
+    customers.map((c: (typeof customers)[number]) => [c.id, c])
+  );
 
   // 3. Most recent order per customer (any period)
   const latestOrders = await prisma.order.groupBy({
