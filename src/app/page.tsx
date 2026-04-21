@@ -580,7 +580,10 @@ export default function Dashboard() {
                       tickFormatter={(v) => `${v}%`}
                     />
                     <Tooltip
-                      formatter={(v: number) => [`${v}%`, "Conversion"]}
+                      formatter={(v) => [
+                        `${typeof v === "number" ? v : Number(v ?? 0)}%`,
+                        "Conversion",
+                      ]}
                       contentStyle={{
                         borderRadius: 8,
                         border: "1px solid #e2e8f0",

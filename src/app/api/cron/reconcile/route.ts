@@ -157,7 +157,7 @@ export async function GET(req: NextRequest) {
         }
 
         // --- Order upsert (same shape as backfill) ---
-        const orderType = n.__typename === "Quote" ? "QUOTE" : "INVOICE";
+        const orderType: "QUOTE" | "INVOICE" = n.__typename === "Quote" ? "QUOTE" : "INVOICE";
         const orderData = {
           visualId: n.visualId ?? null,
           orderType,
