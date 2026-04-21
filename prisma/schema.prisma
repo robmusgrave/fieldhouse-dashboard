@@ -8,34 +8,43 @@ datasource db {
 }
 
 model Customer {
-  id            String   @id
-  companyName   String
-  email         String?
-  createdAt     DateTime
-  updatedAt     DateTime @updatedAt
-  orders        Order[]
+  id                      String   @id
+  companyName             String?
+  primaryContactFirstName String?
+  primaryContactLastName  String?
+  primaryContactFullName  String?
+  primaryContactEmail     String?
+  primaryContactPhone     String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  orders                  Order[]
 }
 
 model Order {
-  id               String     @id            // Printavo ID
-  visualId         String?                   // e.g., "12345"
-  type             OrderType                 // QUOTE or INVOICE
-  status           String                    // Printavo status name
-  statusCategory   String                    // our derived category
-  subtotal         Float
-  total            Float
-  customerId       String
-  customer         Customer   @relation(fields: [customerId], references: [id])
-  orderDate        DateTime                  // when created in Printavo
-  dueDate          DateTime?                 // customer due / in-hands
-  completedAt      DateTime?                 // first time it entered a COMPLETE status
-  voided           Boolean    @default(false)
-  lastSyncedAt     DateTime   @default(now())
-  lineItems        LineItem[]
+  id              String    @id
+  visualId        String?
+  orderType       OrderType
+  statusId        String?
+  statusName      String?
+  statusCategory  String?
+  total           Float?
+  subtotal        Float?
+  totalQuantity   Int?
+  customerId      String?
+  contactFullName String?
+  contactEmail    String?
+  createdAt       DateTime
+  customerDueAt   DateTime?
+  lastSyncedAt    DateTime
 
-  @@index([orderDate])
-  @@index([dueDate])
+  customer        Customer?       @relation(fields: [customerId], references: [id])
+  lineItems       LineItem[]
+  statusHistory   StatusHistory[]
+
   @@index([statusCategory])
+  @@index([createdAt])
+  @@index([customerDueAt])
   @@index([customerId])
 }
 
@@ -45,34 +54,40 @@ enum OrderType {
 }
 
 model LineItem {
-  id           String   @id
-  orderId      String
-  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  description  String
-  quantity     Int
-  price        Float
-  typeOfWork   String?                       // Embroidery, Screen Printing, etc.
+  id          String  @id
+  orderId     String
+  description String?
+  quantity    Int?
+  price       Float?
+  typeOfWork  String?
+
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([typeOfWork])
 }
 
 model StatusHistory {
-  id         String   @id @default(cuid())
-  orderId    String
-  status     String
-  category   String
-  changedAt  DateTime
+  id        String   @id @default(cuid())
+  orderId   String
+  status    String
+  category  String
+  changedAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId, changedAt])
 }
 
 model SyncLog {
-  id         String   @id @default(cuid())
-  kind       String                          // "backfill", "webhook", "cron"
-  status     String                          // "success", "error"
-  message    String?
-  createdAt  DateTime @default(now())
+  id            String    @id @default(cuid())
+  startedAt     DateTime
+  finishedAt    DateTime?
+  ordersSynced  Int       @default(0)
+  ordersSkipped Int       @default(0)
+  status        String
+  errorMessage  String?
+  createdAt     DateTime  @default(now())
 
   @@index([createdAt])
 }

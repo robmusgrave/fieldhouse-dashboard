@@ -1,0 +1,40 @@
+name: Reconcile Printavo Sync
+
+# Runs every 10 minutes. GitHub Actions schedules can drift 1-2 min under load;
+# that's fine for this use case since the sinceMinutes window has plenty of overlap.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {} # allow manual trigger from the Actions tab
+
+concurrency:
+  # Prevent two reconcile runs from overlapping if one takes longer than 10 min.
+  group: printavo-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping reconcile endpoint
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Pinging $DEPLOY_URL/api/cron/reconcile"
+          response=$(curl -sS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w "\nHTTP_STATUS:%{http_code}\nTIME:%{time_total}s" \
+            --max-time 120 \
+            --fail-with-body \
+            "$DEPLOY_URL/api/cron/reconcile")
+
+          echo "$response"
+
+          # Extract status code and fail the job if it's not 2xx
+          status=$(echo "$response" | grep -oE "HTTP_STATUS:[0-9]+" | cut -d: -f2)
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Reconcile failed with HTTP $status"
+            exit 1
+          fi
