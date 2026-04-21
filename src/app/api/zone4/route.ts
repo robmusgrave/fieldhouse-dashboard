@@ -100,7 +100,7 @@ export async function GET() {
   });
 
   // 2. Pull LineItems for those orders (for pieces by decoration method)
-  const orderIds = orders.map((o) => o.id);
+  const orderIds = orders.map((o: (typeof orders)[number]) => o.id);
   const lineItems = orderIds.length
     ? await prisma.lineItem.findMany({
         where: { orderId: { in: orderIds } },
@@ -113,7 +113,8 @@ export async function GET() {
   for (const o of orders) {
     if (!o.customerDueAt) continue;
     const w = weeks.findIndex(
-      (wk) => o.customerDueAt! >= wk.start && o.customerDueAt! <= wk.end
+      (wk: (typeof weeks)[number]) =>
+        o.customerDueAt! >= wk.start && o.customerDueAt! <= wk.end
     );
     if (w >= 0) orderWeek.set(o.id, w);
   }
