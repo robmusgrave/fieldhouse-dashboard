@@ -71,7 +71,10 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
     _max: { createdAt: true },
   });
   const latestById = new Map(
-    latestOrders.map((r) => [r.customerId!, r._max.createdAt])
+    latestOrders.map((r: (typeof latestOrders)[number]) => [
+      r.customerId!,
+      r._max.createdAt,
+    ])
   );
 
   // 4. Stitch it together in the same order as `grouped` (desc by revenue)
