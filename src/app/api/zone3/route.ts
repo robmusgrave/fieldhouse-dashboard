@@ -45,6 +45,11 @@ function funnelBucket(statusName: string | null): FunnelKey | null {
 }
 
 type FunnelKey = "Draft" | "ProofSent" | "ApprovalSent" | "Approved";
+type CustomerLite = {
+  id: string;
+  companyName: string | null;
+  primaryContactFullName: string | null;
+};
 const FUNNEL_LABEL: Record<FunnelKey, string> = {
   Draft: "Draft",
   ProofSent: "Proof Sent",
@@ -114,15 +119,13 @@ export async function GET() {
   const custIds = expiringSoon
     .map((x: (typeof expiringSoon)[number]) => x.q.customerId)
     .filter((id: string | null): id is string => !!id);
-  const custs = custIds.length
+  const custs: CustomerLite[] = custIds.length
     ? await prisma.customer.findMany({
         where: { id: { in: custIds } },
         select: { id: true, companyName: true, primaryContactFullName: true },
       })
     : [];
-  const custMap = new Map(
-    custs.map((c: (typeof custs)[number]) => [c.id, c] as const)
-  );
+  const custMap = new Map<string, CustomerLite>(custs.map((c) => [c.id, c]));
 
   const expiringSoonOut = expiringSoon.map(
     ({ q, age }: (typeof expiringSoon)[number]) => {
