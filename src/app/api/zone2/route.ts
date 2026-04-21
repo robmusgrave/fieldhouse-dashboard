@@ -53,7 +53,7 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
   if (grouped.length === 0) return [];
 
   const ids = grouped
-    .map((g): string | null => g.customerId)
+    .map((g: { customerId: string | null }): string | null => g.customerId)
     .filter((id: string | null): id is string => Boolean(id));
 
   // 2. Fetch customer records for the display fields
