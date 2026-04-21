@@ -53,8 +53,8 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
   if (grouped.length === 0) return [];
 
   const ids = grouped
-  .map((g: typeof grouped[number]) => g.customerId)
-  .filter((id): id is string => !!id);
+    .map((g): string | null => g.customerId)
+    .filter((id: string | null): id is string => Boolean(id));
 
   // 2. Fetch customer records for the display fields
   const customers = await prisma.customer.findMany({
