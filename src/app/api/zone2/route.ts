@@ -52,17 +52,19 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
 
   if (grouped.length === 0) return [];
 
-  const ids = grouped
-    .map((g: { customerId: string | null }): string | null => g.customerId)
-    .filter((id: string | null): id is string => Boolean(id));
+  const ids: string[] = [];
+  for (const g of grouped) {
+    if (g.customerId) ids.push(g.customerId);
+  }
 
   // 2. Fetch customer records for the display fields
   const customers = await prisma.customer.findMany({
     where: { id: { in: ids } },
   });
-  const byId = new Map(
-    customers.map((c: (typeof customers)[number]) => [c.id, c])
-  );
+  const byId = new Map<string, (typeof customers)[number]>();
+  for (const c of customers) {
+    byId.set(c.id, c);
+  }
 
   // 3. Most recent order per customer (any period)
   const latestOrders = await prisma.order.groupBy({
@@ -70,21 +72,17 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
     where: { customerId: { in: ids } },
     _max: { createdAt: true },
   });
-  const latestById = new Map(
-    latestOrders.map((r: (typeof latestOrders)[number]) => [
-      r.customerId!,
-      r._max.createdAt,
-    ])
-  );
+  const latestById = new Map<string, Date | null>();
+  for (const r of latestOrders) {
+    if (r.customerId) latestById.set(r.customerId, r._max.createdAt ?? null);
+  }
 
   // 4. Stitch it together in the same order as `grouped` (desc by revenue)
-  return grouped.map((g) => {
+  const rows: CustomerRow[] = [];
+  for (const g of grouped) {
     const c = g.customerId ? byId.get(g.customerId) : undefined;
-    const display =
-      c?.companyName ||
-      c?.primaryContactFullName ||
-      "—";
-    return {
+    const display = c?.companyName || c?.primaryContactFullName || "—";
+    rows.push({
       customer: display,
       revenue: g._sum.total ?? 0,
       orders: g._count,
@@ -96,8 +94,9 @@ async function topCustomersForRange(start: Date, end: Date): Promise<CustomerRow
       primaryContactFullName: c?.primaryContactFullName ?? null,
       primaryContactEmail: c?.primaryContactEmail ?? null,
       primaryContactPhone: c?.primaryContactPhone ?? null,
-    };
-  });
+    });
+  }
+  return rows;
 }
 
 export async function GET() {
